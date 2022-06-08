@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#define SIZE_ESTANDAR 10
 
+// POST
 
 struct post{
     //int id; //no se si se necesita un id, ya la posicion es el id
@@ -11,6 +13,7 @@ struct post{
     char* texto;
     int cantidad_likes;
     char** dieron_likes;
+    size_t size_dieron_likes;
 };
 
 post_t *crear_post(char *publicador, char *texto) {
@@ -18,11 +21,16 @@ post_t *crear_post(char *publicador, char *texto) {
     if (!post) return NULL;
 
     post->cantidad_likes = 0;
-    post->dieron_likes = malloc(sizeof (char*) * 10);
+    post->size_dieron_likes = SIZE_ESTANDAR;
+    post->dieron_likes = malloc(sizeof (char*) * post->size_dieron_likes);
     post->publicador = strdup(publicador);
     post->texto = strdup(texto);
 
     return post;
+}
+
+void destruir_post_wrapper(void* post){
+    destruir_post(post);
 }
 
 void destruir_post(post_t *post){
@@ -32,9 +40,12 @@ void destruir_post(post_t *post){
     free(post);
 }
 
+
+// ALGOGRAM
+
 struct algogram{
     hash_t* usuarios;
-    post_t **posts;
+    post_t **posts; //por ahi hacer hash de posts
     int cant_posts;
     bool logueado;
     char* usuario_logueado;
@@ -45,24 +56,29 @@ algogram_t *crear_algo(FILE *usuarios){
     if (algo == NULL) return NULL;
 
     algo->cant_posts = 0;
-    algo->posts = malloc(sizeof (post_t) * 10);
-    algo->usuario_logueado = malloc(sizeof (char*));
-    algo->usuarios = hash_crear(NULL);
+    algo->usuario_logueado = NULL;
+    algo->logueado = false;
 
-    if (!algo->posts || !algo->usuario_logueado || !algo->usuarios){
+    algo->posts = malloc(sizeof (post_t) * SIZE_ESTANDAR);
+    if (!algo->posts){
+        free(algo);
+        return NULL;
+    }
+
+    algo->usuarios = hash_crear(NULL);
+    if (!algo->usuarios){
         free(algo);
         return NULL;
     }
     char *line = NULL;
     size_t buffer_size = 0;
-    ssize_t characters = 0;
 
-    int ubicacion = 0;
     while (getline(&line, &buffer_size, usuarios) != -1) {
         line[strcspn(line, "\n")] = 0;
         hash_guardar(algo->usuarios, line, NULL); //aca pienso en guardar su ubicacion
 
     }
+    free(line);
     return algo;
 }
 
@@ -73,6 +89,9 @@ void login(algogram_t *algo, char *usuario) {
     } else if (!hash_pertenece(algo->usuarios, usuario)){
         printf("Error: usuario no existente\n");
         return;
+    }
+    if (algo->usuario_logueado){
+        free(algo->usuario_logueado);
     }
 
     printf("Hola %s\n", usuario);
@@ -108,8 +127,14 @@ void likear_post(algogram_t *algo, size_t id) {
         return;
     }
     //hay que checkear si ya dio like
-    algo->posts[id]->dieron_likes[algo->posts[id]->cantidad_likes] = algo->usuario_logueado;
-    algo->posts[id]->cantidad_likes++;
+    post_t *post = algo->posts[id];
+    post->dieron_likes[algo->posts[id]->cantidad_likes] = algo->usuario_logueado;
+    post->cantidad_likes++;
+    if (post->cantidad_likes == post->size_dieron_likes){ //suponiendo que no se pueden borrar likes
+        post->dieron_likes = realloc(post->dieron_likes, post->size_dieron_likes*2);
+        if (post->dieron_likes)
+            post->size_dieron_likes*=2;
+    }
     printf("Post likeado\n");
 
 }

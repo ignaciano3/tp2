@@ -8,6 +8,7 @@ typedef struct post post_t;
 // POST
 post_t *crear_post(char* publicador, char* texto);
 void destruir_post(post_t *post);
+void destruir_post_wrapper(void *post);
 // ALGOGRAM
 
 algogram_t *crear_algo(FILE *usuarios);

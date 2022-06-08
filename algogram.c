@@ -29,9 +29,11 @@ post_t *crear_post(char *publicador, char *texto) {
     return post;
 }
 
+/*
 void destruir_post_wrapper(void* post){
     destruir_post(post);
 }
+*/
 
 void destruir_post(post_t *post){
     free(post->dieron_likes);
@@ -117,6 +119,7 @@ void publicar(algogram_t *algo, char *texto) {
     post_t *post = crear_post(algo->usuario_logueado, texto);
     algo->posts[algo->cant_posts] = post;
     algo->cant_posts++;
+    //if (algo->cant_posts == size_algo_posts) redimensionar
     printf("Post publicado\n");
 
 }

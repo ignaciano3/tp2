@@ -12,10 +12,8 @@ int main (int argc, char **argv){
 
     char *line = NULL;
     size_t buffer_size = 0;
-    ssize_t characters = 0;
 
-    while (characters != -1) {
-        characters = getline(&line, &buffer_size, stdin);
+    while (getline(&line, &buffer_size, stdin) != -1) {
         line[strcspn(line, "\n")] = 0; // remuevo el \n
 
         if (strcmp(line, "login") == 0){
@@ -41,8 +39,21 @@ int main (int argc, char **argv){
             likear_post(algo, n);
         }
 
+        if (strcmp(line, "mostrar_likes") == 0){
+            getline(&line, &buffer_size, stdin);
+            line[strcspn(line, "\n")] = 0;
+            size_t n = (size_t)strtol(line, NULL, BASE);
+            mostrar_likes(algo, n);
+        }
+
+        if (strcmp(line, "ver_siguiente_feed") == 0){
+            ver_siguiente_feed(algo);
+        }
+
         // exit es ctrl + d
     }
-
+    free(line);
+    destruir_algo(algo);
+    fclose(usuarios);
     return 0;
 }

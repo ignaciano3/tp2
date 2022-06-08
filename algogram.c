@@ -1,11 +1,9 @@
-//
-// Created by ignacio on 6/6/22.
-//
-
 #include "algogram.h"
+#include "hash.h"
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+
 
 struct post{
     //int id; //no se si se necesita un id, ya la posicion es el id
@@ -27,8 +25,15 @@ post_t *crear_post(char *publicador, char *texto) {
     return post;
 }
 
+void destruir_post(post_t *post){
+    free(post->dieron_likes);
+    free(post->publicador);
+    free(post->texto);
+    free(post);
+}
+
 struct algogram{
-    char** usuarios; //va a ser un hash
+    hash_t* usuarios;
     post_t **posts;
     int cant_posts;
     bool logueado;
@@ -38,16 +43,25 @@ struct algogram{
 algogram_t *crear_algo(FILE *usuarios){
     algogram_t *algo = malloc(sizeof (algogram_t));
     if (algo == NULL) return NULL;
+
     algo->cant_posts = 0;
     algo->posts = malloc(sizeof (post_t) * 10);
     algo->usuario_logueado = malloc(sizeof (char*));
-    if (!algo->posts){
+    algo->usuarios = hash_crear(NULL);
+
+    if (!algo->posts || !algo->usuario_logueado || !algo->usuarios){
         free(algo);
         return NULL;
     }
-    if (!algo->usuario_logueado){
-        free(algo);
-        return NULL;
+    char *line = NULL;
+    size_t buffer_size = 0;
+    ssize_t characters = 0;
+
+    int ubicacion = 0;
+    while (getline(&line, &buffer_size, usuarios) != -1) {
+        line[strcspn(line, "\n")] = 0;
+        hash_guardar(algo->usuarios, line, NULL); //aca pienso en guardar su ubicacion
+
     }
     return algo;
 }
@@ -56,12 +70,11 @@ void login(algogram_t *algo, char *usuario) {
     if (algo->logueado){
         printf("Error: Ya habia un usuario loggeado\n");
         return;
+    } else if (!hash_pertenece(algo->usuarios, usuario)){
+        printf("Error: usuario no existente\n");
+        return;
     }
-    /*
-    else if (usuario no existe){
-        printf("Error: usuario no existente");
-    }
-    */
+
     printf("Hola %s\n", usuario);
     algo->logueado = true;
     algo->usuario_logueado = strdup(usuario);
@@ -98,5 +111,32 @@ void likear_post(algogram_t *algo, size_t id) {
     algo->posts[id]->dieron_likes[algo->posts[id]->cantidad_likes] = algo->usuario_logueado;
     algo->posts[id]->cantidad_likes++;
     printf("Post likeado\n");
+
+}
+
+void mostrar_likes(algogram_t *algo, size_t id) {
+    if (algo->cant_posts <= id || algo->posts[id]->cantidad_likes == 0){
+        printf("Error: Post inexistente o sin likes\n");
+    }
+
+    int n = algo->posts[id]->cantidad_likes;
+    printf("El post tiene %i likes\n", n);
+    for (int i = 0; i < n; i++){
+        printf("    %s\n", algo->posts[id]->dieron_likes[i]);
+    }
+}
+
+void ver_siguiente_feed(algogram_t *algo) {
+
+}
+
+void destruir_algo(algogram_t *algo) {
+    free(algo->usuario_logueado);
+    for (int i = 0; i < algo->cant_posts; i++){
+        destruir_post(algo->posts[i]);
+    }
+    free(algo->posts);
+    hash_destruir(algo->usuarios);
+    free(algo);
 
 }

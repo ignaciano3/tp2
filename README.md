@@ -7,3 +7,4 @@
 - Ver como guardad afinidad de un usuario
 - Redimensionar algo->posts
 - Checkear si ya se dio like
+- Ver como hacer para ver si un post es mas antiguo que otro

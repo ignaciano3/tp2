@@ -20,9 +20,9 @@ post_t *crear_post(char *publicador, char *texto) {
     if (!post) return NULL;
 
     post->cantidad_likes = 0;
-    post->dieron_likes = NULL;
-    post->publicador = publicador;
-    post->texto = texto;
+    post->dieron_likes = malloc(sizeof (char*) * 10);
+    post->publicador = strdup(publicador);
+    post->texto = strdup(texto);
 
     return post;
 }
@@ -81,6 +81,7 @@ void publicar(algogram_t *algo, char *texto) {
         printf("Error: no habia usuario loggeado\n");
         return;
     }
+
     post_t *post = crear_post(algo->usuario_logueado, texto);
     algo->posts[algo->cant_posts] = post;
     algo->cant_posts++;
@@ -89,13 +90,13 @@ void publicar(algogram_t *algo, char *texto) {
 }
 
 void likear_post(algogram_t *algo, size_t id) {
-    if (!algo->logueado || algo->cant_posts < id){
-        printf("Error: Usuario no loggeado o Post inexistente");
+    if (!algo->logueado || algo->cant_posts <= id){
+        printf("Error: Usuario no loggeado o Post inexistente\n");
         return;
     }
     //hay que checkear si ya dio like
     algo->posts[id]->dieron_likes[algo->posts[id]->cantidad_likes] = algo->usuario_logueado;
     algo->posts[id]->cantidad_likes++;
-    printf("Post likeado");
+    printf("Post likeado\n");
 
 }

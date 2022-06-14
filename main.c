@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #define BASE 10
+#include "heap.h"
 
 int main (int argc, char **argv){
     // se supone que se introducen usuarios y son validos
@@ -14,6 +15,8 @@ int main (int argc, char **argv){
     size_t buffer_size = 0;
 
     while (getline(&line, &buffer_size, stdin) != -1) {
+        heap_t *feed = heap_crear(cmp);
+
         line[strcspn(line, "\n")] = 0; // remuevo el \n
 
         if (strcmp(line, "login") == 0){
@@ -47,7 +50,10 @@ int main (int argc, char **argv){
         }
 
         if (strcmp(line, "ver_siguiente_feed") == 0){
-            ver_siguiente_feed(algo);
+            if (heap_esta_vacio(feed)){
+                crear_proximo_feed(algo, feed);
+            }
+            ver_siguiente_feed(algo, feed);
         }
 
         // exit es ctrl + d

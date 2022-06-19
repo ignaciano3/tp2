@@ -8,11 +8,12 @@ void swap(void **a, void **b) {
     *b = temp;
 }
 
-struct heap {
+typedef struct heap {
     cmp_func_t cmp;
-    size_t capacidad, cantidad;
+    size_t capacidad; // Representa el largo del datos
+    size_t cantidad; // Cantidad de elementos
     void** datos;
-};
+} heap_t;
 
 heap_t *heap_crear(cmp_func_t cmp) {
     heap_t* heap = malloc(sizeof (heap_t));
@@ -48,31 +49,24 @@ void downHeap(void** datos, cmp_func_t cmp, size_t cantidad, size_t padre){
     }
 }
 
-void heapify(void **elementos, cmp_func_t cmp, size_t cant){
-    for (int i = (int)cant/2-1; i>= 0; i--){
-        downHeap(elementos, cmp, cant, (size_t)i);
-    }
-}
-
 heap_t *heap_crear_arr(void **arreglo, size_t n, cmp_func_t cmp) {
     heap_t* heap = heap_crear(cmp);
     if (heap == NULL) return NULL;
+    for (int i = 0; i < n; i++){
+        heap_encolar(heap, arreglo[i]);
+    }
+    return heap;
+}
 
-    while (heap->capacidad < n){
-        heap_redimensionar_datos(heap, heap->capacidad*2);
-        if (!heap->datos){
-            free(heap);
-            return NULL;
+void heap_destruir(heap_t *heap, void (*destruir_elemento)(void *)) {
+    while (!heap_esta_vacio(heap)){
+        void* prim = heap_desencolar(heap);
+        if (destruir_elemento != NULL) {
+            destruir_elemento(prim);
         }
     }
-
-    for (int i = 0; i < n; i++){
-        heap->datos[i] = arreglo[i];
-    }
-    heap->cantidad = n;
-    heapify(heap->datos, cmp, heap->cantidad);
-
-    return heap;
+    free(heap->datos);
+    free(heap);
 }
 
 size_t heap_cantidad(const heap_t *heap) {
@@ -83,43 +77,49 @@ bool heap_esta_vacio(const heap_t *heap) {
     return heap->cantidad == 0;
 }
 
-void upHeap(void** datos, cmp_func_t cmp, size_t hijo){
+void upHeap(void** datos, cmp_func_t cmp, size_t cantidad, size_t hijo){
     if (hijo == 0) return;
     size_t padre = (hijo-1)/2;
     if (cmp(datos[hijo], datos[padre]) > 0){
         swap(&datos[hijo], &datos[padre]);
-        upHeap(datos, cmp, padre);
+        upHeap(datos, cmp, cantidad, padre);
     }
 }
 
 bool heap_encolar(heap_t *heap, void *elem) {
     if (heap->cantidad == heap->capacidad){
         heap_redimensionar_datos(heap, heap->capacidad*2);
-        if (!heap->datos) return NULL;
+        if (heap->datos == NULL) return NULL;
     }
 
     heap->datos[heap->cantidad] = elem;
-    upHeap(heap->datos, heap->cmp, heap->cantidad);
+    upHeap(heap->datos, heap->cmp, heap->cantidad, heap->cantidad);
     heap->cantidad++;
     return true;
 }
 
 void *heap_ver_max(const heap_t *heap) {
-    return (!heap_esta_vacio(heap)) ? heap->datos[0] : NULL;
+    return heap->datos[0];
 }
 
 void *heap_desencolar(heap_t *heap) {
     if (heap_esta_vacio(heap)) return NULL;
-    void* dato = heap->datos[0];
 
     heap->cantidad--;
+    void* dato = heap->datos[0];
+
+    if (heap->cantidad == 1){
+        heap->datos[0] = NULL;
+        return dato;
+    }
 
     // Paso el ultimo al principio
-    swap(&heap->datos[0], &heap->datos[heap->cantidad]);
+    heap->datos[0] = heap->datos[heap->cantidad];
+    heap->datos[heap->cantidad] = NULL;
 
     downHeap(heap->datos, heap->cmp, heap->cantidad, 0);
 
-    if (heap->cantidad <= heap->capacidad/4 && heap->cantidad <= CAPACIDAD_STANDARD){
+    if (heap->cantidad <= heap->capacidad/4){
         heap_redimensionar_datos(heap, heap->capacidad/2);
         if (heap->datos == NULL) return NULL;
     }
@@ -127,19 +127,14 @@ void *heap_desencolar(heap_t *heap) {
     return dato;
 }
 
-void heap_destruir(heap_t *heap, void (*destruir_elemento)(void *)) {
-    if (destruir_elemento){
-        for (int i = 0; i < heap->cantidad; i++)
-            destruir_elemento(heap->datos[i]);
-    }
-    free(heap->datos);
-    free(heap);
-}
-
 void heap_sort(void **elementos, size_t cant, cmp_func_t cmp) {
-    heapify(elementos, cmp, cant);
+
+    for (int i = (int)cant/2-1; i>= 0; i--){
+        downHeap(elementos, cmp, cant, i);
+    }
+
     for (int i = (int)cant - 1; i >= 0; i--) {
         swap(&elementos[0], &elementos[i]);
-        downHeap(elementos, cmp, (size_t)i, 0);
+        downHeap(elementos, cmp, i, 0);
     }
 }

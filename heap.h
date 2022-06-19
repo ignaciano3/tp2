@@ -1,8 +1,8 @@
 #ifndef HEAP_H
 #define HEAP_H
 
-#include <stdbool.h>  // bool
-#include <stddef.h>   // size_t
+#include <stdbool.h>
+#include <stddef.h>
 
 /* Prototipo de función de comparación que se le pasa como parámetro a las
  * diversas funciones del heap.
@@ -13,7 +13,6 @@
  *   mayor a 0  si  a > b
  */
 typedef int (*cmp_func_t)(const void *a, const void *b);
-
 
 /* Función de heapsort genérica. Esta función ordena mediante heap_sort
  * un arreglo de punteros opacos, para lo cual requiere que se
@@ -41,7 +40,7 @@ heap_t *heap_crear(cmp_func_t cmp);
 
 /*
  * Constructor alternativo del heap. Además de la función de comparación,
- * recibe un arreglo de valores con que inicializar el heap. Complejidad
+ * recibe un datos de valores con que inicializar el heap. Complejidad
  * O(n).
  *
  * Excepto por la complejidad, es equivalente a crear un heap vacío y encolar
@@ -82,6 +81,8 @@ void *heap_ver_max(const heap_t *heap);
  */
 void *heap_desencolar(heap_t *heap);
 
+/* Imprime los datos del heap*/
+void heap_imprimir(heap_t* heap);
 
 void pruebas_heap_estudiante(void);
 

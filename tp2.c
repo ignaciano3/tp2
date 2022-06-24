@@ -9,8 +9,12 @@
 #define BASE 10
 #include "heap.h"
 
+int cmp(const void* a, const void *b){
+    return *(int*)b - *(int*)a;
+}
+
 int main(int argc, char **argv){
-    // se supone que se introducen usuarios y son validos
+    if (argc == 1) return 1;
     FILE *usuarios = fopen(argv[1], "r");
     algogram_t *algo = crear_algo(usuarios);
 
@@ -18,31 +22,41 @@ int main(int argc, char **argv){
     size_t buffer_size = 0;
     ssize_t gl;
 
+    heap_t* feed;
+    int ult_dist = 1;
+    bool borrar_heap = false;
+
     while (1) {
         gl = getline(&line, &buffer_size, stdin);
         if (gl == -1) break;
-
         line[strcspn(line, "\n")] = 0; // remuevo el \n
 
         if (strcmp(line, "login") == 0){
             gl = getline(&line, &buffer_size, stdin);
             if (gl == -1) break;
             line[strcspn(line, "\n")] = 0;
-            login(algo, line);
+            bool loggeo = login(algo, line);
+            if (!loggeo) continue;
+            feed = heap_crear(cmp);
+            borrar_heap = true;
+            ult_dist = 1; // este ult dist tiene que ser particular de cada usuario
         }
 
-        if (strcmp(line, "logout") == 0){
-            logout(algo);
+        else if (strcmp(line, "logout") == 0){
+            bool desloggeo = logout(algo);
+            if (!desloggeo) continue;
+            heap_destruir(feed, NULL);
+            borrar_heap = false;
         }
 
-        if (strcmp(line, "publicar") == 0){
+        else if (strcmp(line, "publicar") == 0){
             gl = getline(&line, &buffer_size, stdin);
             if (gl == -1) break;
             line[strcspn(line, "\n")] = 0;
             publicar(algo, line);
         }
 
-        if (strcmp(line, "likear_post") == 0){
+        else if (strcmp(line, "likear_post") == 0){
             gl = getline(&line, &buffer_size, stdin);
             if (gl == -1) break;
             line[strcspn(line, "\n")] = 0;
@@ -50,7 +64,7 @@ int main(int argc, char **argv){
             likear_post(algo, n);
         }
 
-        if (strcmp(line, "mostrar_likes") == 0){
+        else if (strcmp(line, "mostrar_likes") == 0){
             gl = getline(&line, &buffer_size, stdin);
             if (gl == -1) break;
             line[strcspn(line, "\n")] = 0;
@@ -58,12 +72,13 @@ int main(int argc, char **argv){
             mostrar_likes(algo, n);
         }
 
-        if (strcmp(line, "ver_siguiente_feed") == 0){
-            printf("\n");
+        else if (strcmp(line, "ver_siguiente_feed") == 0){
+            ult_dist = ver_siguiente_feed(algo, feed, ult_dist);
         }
 
         // exit es ctrl + d
     }
+    if (borrar_heap) heap_destruir(feed, NULL);
     free(line);
     destruir_algo(algo);
     fclose(usuarios);

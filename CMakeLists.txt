@@ -7,12 +7,14 @@ set(PROJECT_HEADERS
         algogram.h
         hash.h
         heap.h
+        lista.h
         )
 
 set(PROJECT_SOURCES
         algogram.c
         hash.c
         heap.c
+        lista.c
         tp2.c
         )
 

@@ -14,12 +14,13 @@ typedef struct usuario usuario_t;
 // USUARIO
 usuario_t *crear_usuario();
 void usuario_agregar_post(usuario_t *usuario, int id_post);
+lista_t *ver_posts_usuario(usuario_t* usuario);
 void destruir_usuario(usuario_t *usuario);
 void destruir_usuario_wrapper(void *usuario);
-lista_t *ver_posts_usuario(usuario_t* usuario);
+
 
 // POST
-post_t *crear_post(char* publicador, char* texto, int id);
+post_t *crear_post(char* publicador, char* texto);
 void destruir_post(post_t *post);
 void destruir_post_wrapper(void *post);
 
@@ -33,7 +34,7 @@ void mostrar_likes(algogram_t *algo, size_t id);
 void destruir_algo(algogram_t *algo);
 int ver_siguiente_feed(algogram_t *algo, heap_t *feed, int id_visitar);
 
-// FEED
+// FEED <- Deberia ser del usuario
 bool actualizar_feed(algogram_t *algo, heap_t* feed, int ult_dist);
 
 #endif //TP2_ALGO_ALGOGRAM_H

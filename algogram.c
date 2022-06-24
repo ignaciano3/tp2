@@ -260,7 +260,7 @@ int ver_siguiente_feed(algogram_t *algo, heap_t*feed, int ult_dist){
     printf("Post ID %i\n", id_post);
     printf("%s dijo: %s\n", post->publicador, post->texto);
     printf("Likes: %i\n", post->cantidad_likes);
-
+    free(id_);
     return ult_dist;
 }
 

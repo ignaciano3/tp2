@@ -22,9 +22,8 @@ int main(int argc, char **argv){
     size_t buffer_size = 0;
     ssize_t gl;
 
-    heap_t* feed;
+    heap_t* feed = heap_crear(cmp);
     int ult_dist = 1;
-    bool borrar_heap = false;
 
     while (1) {
         gl = getline(&line, &buffer_size, stdin);
@@ -37,8 +36,6 @@ int main(int argc, char **argv){
             line[strcspn(line, "\n")] = 0;
             bool loggeo = login(algo, line);
             if (!loggeo) continue;
-            feed = heap_crear(cmp);
-            borrar_heap = true;
             ult_dist = 1; // este ult dist tiene que ser particular de cada usuario
         }
 
@@ -46,7 +43,7 @@ int main(int argc, char **argv){
             bool desloggeo = logout(algo);
             if (!desloggeo) continue;
             heap_destruir(feed, NULL);
-            borrar_heap = false;
+            feed = heap_crear(cmp);
         }
 
         else if (strcmp(line, "publicar") == 0){
@@ -78,7 +75,7 @@ int main(int argc, char **argv){
 
         // exit es ctrl + d
     }
-    if (borrar_heap) heap_destruir(feed, NULL);
+    heap_destruir(feed, NULL);
     free(line);
     destruir_algo(algo);
     fclose(usuarios);

@@ -119,7 +119,7 @@ void *heap_desencolar(heap_t *heap) {
 
     downHeap(heap->datos, heap->cmp, heap->cantidad, 0);
 
-    if (heap->cantidad <= heap->capacidad/4 && heap->cantidad <= CAPACIDAD_STANDARD){
+    if (heap->cantidad <= heap->capacidad/4 && heap->cantidad >= CAPACIDAD_STANDARD){
         heap_redimensionar_datos(heap, heap->capacidad/2);
         if (heap->datos == NULL) return NULL;
     }

@@ -9,9 +9,6 @@
 #define BASE 10
 #include "heap.h"
 
-int cmp(const void* a, const void *b){
-    return *(int*)b - *(int*)a;
-}
 
 int main(int argc, char **argv){
     if (argc == 1) return 1;
@@ -22,9 +19,6 @@ int main(int argc, char **argv){
     size_t buffer_size = 0;
     ssize_t gl;
 
-    heap_t* feed = heap_crear(cmp);
-    int ult_dist = 1;
-
     while (1) {
         gl = getline(&line, &buffer_size, stdin);
         if (gl == -1) break;
@@ -34,16 +28,11 @@ int main(int argc, char **argv){
             gl = getline(&line, &buffer_size, stdin);
             if (gl == -1) break;
             line[strcspn(line, "\n")] = 0;
-            bool loggeo = login(algo, line);
-            if (!loggeo) continue;
-            ult_dist = 1; // este ult dist tiene que ser particular de cada usuario
+            login(algo, line);
         }
 
         else if (strcmp(line, "logout") == 0){
-            bool desloggeo = logout(algo);
-            if (!desloggeo) continue;
-            heap_destruir(feed, NULL);
-            feed = heap_crear(cmp);
+            logout(algo);
         }
 
         else if (strcmp(line, "publicar") == 0){
@@ -70,12 +59,11 @@ int main(int argc, char **argv){
         }
 
         else if (strcmp(line, "ver_siguiente_feed") == 0){
-            ult_dist = ver_siguiente_feed(algo, feed, ult_dist);
+           ver_siguiente_feed(algo);
         }
 
         // exit es ctrl + d
     }
-    heap_destruir(feed, NULL);
     free(line);
     destruir_algo(algo);
     fclose(usuarios);

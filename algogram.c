@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include "lista.h"
+#include "cola.h"
 
 // POST
 
@@ -44,24 +44,53 @@ void destruir_post_wrapper(void* post){
 // USUARIO
 
 struct usuario{
-    lista_t * posts_realizados;
-    // heap_t *feed;
+    int id;
+    hash_t *feed;
 };
 
-usuario_t *crear_usuario() {
+void destruir_cola_wrapper(void* cola){
+    cola_destruir(cola, free);
+}
+
+usuario_t *crear_usuario(int id) {
     usuario_t *usuario = malloc(sizeof (usuario_t));
-    usuario->posts_realizados = lista_crear();
+
+    usuario->feed = hash_crear(destruir_cola_wrapper);
+    usuario->id = id;
     return usuario;
 }
 
-void usuario_agregar_post(usuario_t *usuario, int id_post) {
-    int* id = malloc(sizeof (int));
-    *id = id_post;
-    lista_insertar_ultimo(usuario->posts_realizados, (void*)id);
+void usuario_agregar_post(usuario_t *usuario, int id_post, int id_posteador) {
+    if (id_posteador > usuario->id){
+        id_posteador = id_posteador - usuario->id;
+    } else if (id_posteador < usuario->id){
+        id_posteador = usuario->id - id_posteador;
+    } else{
+        // Es el mismo usuario
+        return;
+    }
+
+    char *id_posteador_puntero = malloc(sizeof (char*));
+    sprintf(id_posteador_puntero, "%d", id_posteador);
+
+
+    // Creo la cola si no existe
+    if (!hash_pertenece(usuario->feed, id_posteador_puntero)){
+        cola_t *cola = cola_crear();
+        hash_guardar(usuario->feed, id_posteador_puntero, cola);
+    }
+
+    char *id_post_puntero = malloc(sizeof (char*));
+    sprintf(id_post_puntero, "%d", id_post);
+
+    cola_t *cola = hash_obtener(usuario->feed, id_posteador_puntero);
+    cola_encolar(cola, id_post_puntero);
+    free(id_posteador_puntero);
+
 }
 
 void destruir_usuario(usuario_t *usuario) {
-    lista_destruir(usuario->posts_realizados, free);
+    hash_destruir(usuario->feed);
     free(usuario);
 }
 
@@ -69,9 +98,6 @@ void destruir_usuario_wrapper(void* usuario) {
     destruir_usuario(usuario);
 }
 
-lista_t *ver_posts_usuario(usuario_t *usuario) {
-    return usuario->posts_realizados;
-}
 
 //-----------------------------------------------------------------//
 
@@ -131,7 +157,7 @@ algogram_t *crear_algo(FILE *usuarios){
         char* id2 = malloc(sizeof (char*) + 13); // +13 para que no se queje el compilador
         sprintf(id2, "%d", n);
 
-        usuario_t *usuario = crear_usuario();
+        usuario_t *usuario = crear_usuario(n);
         hash_guardar(algo->usuarios_por_id, id2, usuario);
         free(id2);
         n++;
@@ -142,13 +168,13 @@ algogram_t *crear_algo(FILE *usuarios){
     return algo;
 }
 
-bool login(algogram_t *algo, char *usuario) {
+void login(algogram_t *algo, char *usuario) {
     if (algo->logueado){
         printf("Error: Ya habia un usuario loggeado\n");
-        return false;
+        return;
     } else if (!hash_pertenece(algo->usuarios_por_nombre, usuario)){
         printf("Error: usuario no existente\n");
-        return false;
+        return;
     }
 
     if (algo->nombre_usuario_logueado)
@@ -160,18 +186,16 @@ bool login(algogram_t *algo, char *usuario) {
 
     int id_usuario = *(int*)hash_obtener(algo->usuarios_por_nombre, usuario);
     algo->id_usuario_logueado = id_usuario;
-    return true;
 }
 
-bool logout(algogram_t *algo) {
+void logout(algogram_t *algo) {
     if (!algo->logueado){
         printf("Error: no habia usuario loggeado\n");
-        return false;
+        return;
     }
 
     printf("Adios\n");
     algo->logueado = false;
-    return true;
 }
 
 void publicar(algogram_t *algo, char *texto) {
@@ -186,16 +210,24 @@ void publicar(algogram_t *algo, char *texto) {
     sprintf(id_post, "%d", algo->cant_posts);
     post_t *post = crear_post(algo->nombre_usuario_logueado, texto);
     hash_guardar(algo->posts, id_post, post);
+
+    hash_iter_t *iter = hash_iter_crear(algo->usuarios_por_nombre);
+
+    while (!hash_iter_al_final(iter)){
+        const char* nombre_usuario = hash_iter_ver_actual(iter);
+
+        int id_usuario = *(int*)hash_obtener(algo->usuarios_por_nombre, nombre_usuario);
+        char* id_ = malloc(sizeof (char*));
+        sprintf(id_, "%d", id_usuario);
+
+        usuario_t *usuario = hash_obtener(algo->usuarios_por_id, id_);
+        usuario_agregar_post(usuario, algo->cant_posts, algo->id_usuario_logueado);
+        hash_iter_avanzar(iter);
+        free(id_);
+    }
+
     free(id_post);
-
-    // Agrego el id del post al id del hash de usuario_t
-
-    char* id_usuario = malloc(sizeof (char*));
-    sprintf(id_usuario, "%d", algo->id_usuario_logueado);
-    usuario_t *usuario = hash_obtener(algo->usuarios_por_id, id_usuario);
-    usuario_agregar_post(usuario, algo->cant_posts);
-    free(id_usuario);
-
+    hash_iter_destruir(iter);
     algo->cant_posts++;
     printf("Post publicado\n");
 
@@ -250,52 +282,46 @@ void destruir_algo(algogram_t *algo) {
     free(algo);
 }
 
-bool actualizar_feed(algogram_t *algo, heap_t *feed, int id_visitar) {
-    if (id_visitar < 0 || id_visitar >= algo->cant_usuarios)
-        return false;
 
-    char* id_ = malloc(sizeof (char*));
-    sprintf(id_, "%d", id_visitar);
-    usuario_t *usuario = hash_obtener(algo->usuarios_por_id, id_);
-    lista_iter_t* iter = lista_iter_crear(ver_posts_usuario(usuario));
 
-    while (!lista_iter_al_final(iter)){
-        heap_encolar(feed, lista_iter_ver_actual(iter));
-        lista_iter_avanzar(iter);
-    }
-    lista_iter_destruir(iter);
-    free(id_);
-    return true;
-}
-
-int ver_siguiente_feed(algogram_t *algo, heap_t* feed, int ult_dist){
+void ver_siguiente_feed(algogram_t *algo){
     if (!algo->logueado){
         printf("Usuario no loggeado o no hay mas posts para ver\n");
-        return ult_dist;
+        return;
     }
 
-    while (heap_esta_vacio(feed)){
-        // mas que cambio es que hay usuarios para inspeccionar
-        bool cambio = actualizar_feed(algo, feed, algo->id_usuario_logueado - ult_dist);
-        cambio |= actualizar_feed(algo, feed, algo->id_usuario_logueado + ult_dist);
-        ult_dist++; // voy recorriendo radialmente segun los mas cercanos
-        if (!cambio){
-            printf("Usuario no loggeado o no hay mas posts para ver\n");
-            return ult_dist;
+    char* id_usuario = malloc(sizeof (char*));
+    sprintf(id_usuario, "%d", algo->id_usuario_logueado);
+
+    usuario_t *usuario = hash_obtener(algo->usuarios_por_id, id_usuario);
+
+    char* id_post = NULL;
+    for (int i = 0; i < algo->cant_usuarios; i++){
+        char * i_puntero = malloc(sizeof (char*));
+        sprintf(i_puntero, "%d", i);
+        if (!hash_pertenece(usuario->feed, i_puntero)) {
+            free(i_puntero);
+            continue;
+        }
+        cola_t *cola = hash_obtener(usuario->feed, i_puntero);
+        free(i_puntero);
+        if (!cola_esta_vacia(cola)){
+            id_post = cola_desencolar(cola);
+            break;
         }
     }
 
-    int id_post = *(int*)heap_desencolar(feed);
-    char* id_ = malloc(sizeof (char*));
-    sprintf(id_, "%d", (int)id_post);
+    free(id_usuario);
 
-    post_t *post = hash_obtener(algo->posts, id_);
+    if(id_post == NULL){
+        printf("Usuario no loggeado o no hay mas posts para ver\n");
+        return;
+    }
 
-    printf("Post ID %i\n", id_post);
+    post_t *post = hash_obtener(algo->posts, id_post);
+
+    printf("Post ID %s\n", id_post);
     printf("%s dijo: %s\n", post->publicador, post->texto);
     printf("Likes: %i\n", post->cantidad_likes);
-    free(id_);
-
-    return ult_dist;
 }
 

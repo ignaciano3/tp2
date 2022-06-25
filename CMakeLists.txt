@@ -8,6 +8,7 @@ set(PROJECT_HEADERS
         hash.h
         heap.h
         lista.h
+        cola.h
         )
 
 set(PROJECT_SOURCES
@@ -15,6 +16,7 @@ set(PROJECT_SOURCES
         hash.c
         heap.c
         lista.c
+        cola.c
         tp2.c
         )
 

@@ -6,22 +6,20 @@
 #include <stdbool.h>
 #include <string.h>
 #include "cola.h"
-
+#include "abb.h"
 // POST
 
 struct post{
     char* publicador;
     char* texto;
-    int cantidad_likes;
-    hash_t *dieron_likes;
+    abb_t* dieron_likes;
 };
 
 post_t *crear_post(char *publicador, char *texto) {
     post_t *post = malloc(sizeof (post_t));
     if (!post) return NULL;
 
-    post->cantidad_likes = 0;
-    post->dieron_likes = hash_crear(NULL);
+    post->dieron_likes = abb_crear(strcmp, NULL);
     post->publicador = strdup(publicador);
     post->texto = strdup(texto);
 
@@ -29,7 +27,7 @@ post_t *crear_post(char *publicador, char *texto) {
 }
 
 void destruir_post(post_t *post){
-    hash_destruir(post->dieron_likes);
+    abb_destruir(post->dieron_likes);
     free(post->publicador);
     free(post->texto);
     free(post);
@@ -70,22 +68,23 @@ void usuario_agregar_post(usuario_t *usuario, int id_post, int id_posteador) {
         return;
     }
 
-    char *id_posteador_puntero = malloc(sizeof (char*));
+    char *id_posteador_puntero = malloc(sizeof (char*)+3);
     sprintf(id_posteador_puntero, "%d", id_posteador);
 
-
     // Creo la cola si no existe
+
     if (!hash_pertenece(usuario->feed, id_posteador_puntero)){
         cola_t *cola = cola_crear();
         hash_guardar(usuario->feed, id_posteador_puntero, cola);
     }
 
-    char *id_post_puntero = malloc(sizeof (char*));
+    void *id_post_puntero = malloc(sizeof (void*));
     sprintf(id_post_puntero, "%d", id_post);
 
     cola_t *cola = hash_obtener(usuario->feed, id_posteador_puntero);
     cola_encolar(cola, id_post_puntero);
     free(id_posteador_puntero);
+
 
 }
 
@@ -105,7 +104,7 @@ void destruir_usuario_wrapper(void* usuario) {
 
 struct algogram{
     hash_t *usuarios_por_nombre; // para verificar si existen y obtener id por nombre
-    hash_t *usuarios_por_id; // para guardar el feed, posts realizados
+    hash_t *usuarios_por_id; // para guardar el feed
     hash_t *posts;
     int cant_posts;
     int cant_usuarios;
@@ -151,10 +150,11 @@ algogram_t *crear_algo(FILE *usuarios){
 
         int* id = malloc(sizeof (int));
         *id = n;
+        char* nombre = strdup(line);
+        hash_guardar(algo->usuarios_por_nombre, nombre, (void*)id);
+        free(nombre);
 
-        hash_guardar(algo->usuarios_por_nombre, line, (void*)id);
-
-        char* id2 = malloc(sizeof (char*) + 13); // +13 para que no se queje el compilador
+        char* id2 = malloc(sizeof (char*) + 3); // +3 para que no se queje el compilador
         sprintf(id2, "%d", n);
 
         usuario_t *usuario = crear_usuario(n);
@@ -206,7 +206,7 @@ void publicar(algogram_t *algo, char *texto) {
 
     // Agrego el post al hash posts
 
-    char* id_post = malloc(sizeof (char*));
+    char* id_post = malloc(sizeof (char*) +3); //no necesita +3
     sprintf(id_post, "%d", algo->cant_posts);
     post_t *post = crear_post(algo->nombre_usuario_logueado, texto);
     hash_guardar(algo->posts, id_post, post);
@@ -217,13 +217,14 @@ void publicar(algogram_t *algo, char *texto) {
         const char* nombre_usuario = hash_iter_ver_actual(iter);
 
         int id_usuario = *(int*)hash_obtener(algo->usuarios_por_nombre, nombre_usuario);
-        char* id_ = malloc(sizeof (char*));
+        char* id_ = malloc(sizeof (char*) +3);//no necesita +3
         sprintf(id_, "%d", id_usuario);
 
         usuario_t *usuario = hash_obtener(algo->usuarios_por_id, id_);
+        free(id_);
         usuario_agregar_post(usuario, algo->cant_posts, algo->id_usuario_logueado);
         hash_iter_avanzar(iter);
-        free(id_);
+
     }
 
     free(id_post);
@@ -238,40 +239,46 @@ void likear_post(algogram_t *algo, size_t id) {
         printf("Error: Usuario no loggeado o Post inexistente\n");
         return;
     }
+    printf("Post likeado\n");
 
-    char* id_ = malloc(sizeof (char*));
+    char* id_ = malloc(sizeof (char*) +3); //no necesita +3
     sprintf(id_, "%d", (int)id);
     post_t *post = hash_obtener(algo->posts, id_);
-
-    if (hash_obtener(post->dieron_likes, algo->nombre_usuario_logueado) == NULL){
-        hash_guardar(post->dieron_likes, algo->nombre_usuario_logueado, (void*)true);
-        post->cantidad_likes++;
-    }
-
     free(id_);
-    printf("Post likeado\n");
+
+    char* este_usuario = strdup(algo->nombre_usuario_logueado);
+
+    abb_guardar(post->dieron_likes, este_usuario, NULL);
+    free(este_usuario);
 
 }
 
+bool printear_nombres(const char*nombre, void* dato, void* extra){
+    printf("\t%s\n", nombre);
+    return true;
+}
+
 void mostrar_likes(algogram_t *algo, size_t id) {
-    char* id_ = malloc(sizeof (char*));
+    char* id_ = malloc(sizeof (char*) +3); //no necesita +3
     sprintf(id_, "%d", (int)id);
 
     post_t *post = hash_obtener(algo->posts, id_);
+    free(id_);
+
     if (algo->cant_posts <= id || post == NULL){
         printf("Error: Post inexistente o sin likes\n");
+        return;
     }
 
-    int n = post->cantidad_likes;
-    printf("El post tiene %i likes\n", n);
-
-    hash_iter_t *iter = hash_iter_crear(post->dieron_likes);
-    while(!hash_iter_al_final(iter)){
-        printf("    %s\n", hash_iter_ver_actual(iter));
-        hash_iter_avanzar(iter);
+    size_t n = abb_cantidad(post->dieron_likes);
+    if (n == 0){
+        printf("Error: Post inexistente o sin likes\n");
+        return;
     }
-    hash_iter_destruir(iter);
-    free(id_);
+    printf("El post tiene %zu likes:\n", n);
+
+    abb_in_order(post->dieron_likes, printear_nombres, NULL);
+
 }
 
 void destruir_algo(algogram_t *algo) {
@@ -290,14 +297,14 @@ void ver_siguiente_feed(algogram_t *algo){
         return;
     }
 
-    char* id_usuario = malloc(sizeof (char*));
+    char* id_usuario = malloc(sizeof (char*) +3); //no necesita +3
     sprintf(id_usuario, "%d", algo->id_usuario_logueado);
-
     usuario_t *usuario = hash_obtener(algo->usuarios_por_id, id_usuario);
+    free(id_usuario);
 
     char* id_post = NULL;
     for (int i = 0; i < algo->cant_usuarios; i++){
-        char * i_puntero = malloc(sizeof (char*));
+        char * i_puntero = malloc(sizeof (char*) +3);
         sprintf(i_puntero, "%d", i);
         if (!hash_pertenece(usuario->feed, i_puntero)) {
             free(i_puntero);
@@ -311,8 +318,6 @@ void ver_siguiente_feed(algogram_t *algo){
         }
     }
 
-    free(id_usuario);
-
     if(id_post == NULL){
         printf("Usuario no loggeado o no hay mas posts para ver\n");
         return;
@@ -321,7 +326,7 @@ void ver_siguiente_feed(algogram_t *algo){
     post_t *post = hash_obtener(algo->posts, id_post);
 
     printf("Post ID %s\n", id_post);
-    printf("%s dijo: %s\n", post->publicador, post->texto);
-    printf("Likes: %i\n", post->cantidad_likes);
+    free(id_post);
+    printf("%s dijo: %s", post->publicador, post->texto);
+    printf("Likes: %zu\n", abb_cantidad(post->dieron_likes));
 }
-

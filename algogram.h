@@ -1,8 +1,6 @@
 #define  _POSIX_C_SOURCE 200809L
 #define _GNU_SOURCE
 #include <stdio.h>
-#include "heap.h"
-#include "lista.h"
 
 #ifndef TP2_ALGO_ALGOGRAM_H
 #define TP2_ALGO_ALGOGRAM_H

@@ -3,17 +3,16 @@
 
 #include "algogram.h"
 #include <stdlib.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #define BASE 10
-#include "heap.h"
-
 
 int main(int argc, char **argv){
     if (argc == 1) return 1;
     FILE *usuarios = fopen(argv[1], "r");
+
     algogram_t *algo = crear_algo(usuarios);
+    fclose(usuarios);
 
     char *line = NULL;
     size_t buffer_size = 0;
@@ -38,7 +37,6 @@ int main(int argc, char **argv){
         else if (strcmp(line, "publicar") == 0){
             gl = getline(&line, &buffer_size, stdin);
             if (gl == -1) break;
-            line[strcspn(line, "\n")] = 0;
             publicar(algo, line);
         }
 
@@ -66,6 +64,5 @@ int main(int argc, char **argv){
     }
     free(line);
     destruir_algo(algo);
-    fclose(usuarios);
     return 0;
 }

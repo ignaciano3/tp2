@@ -6,16 +6,16 @@ set(CMAKE_C_STANDARD 11)
 set(PROJECT_HEADERS
         algogram.h
         hash.h
-        cola.h
         pila.h
+        heap.h
         abb.h
         )
 
 set(PROJECT_SOURCES
         algogram.c
         hash.c
-        cola.c
         pila.c
+        heap.c
         abb.c
         tp2.c
         )

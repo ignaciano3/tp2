@@ -7,33 +7,9 @@
 #include <string.h>
 #include "abb.h"
 #include "heap.h"
+#define NO_USUARIO_LOGGEADO "Error: no habia usuario loggeado\n"
+
 // POST
-
-int cmp_feed(const void*a, const void*b){
-    // "1,28" USUARIO POS 1, ID POST 28
-    char* resto_a;
-    char* resto_b;
-    size_t pos_usuario_a = (size_t)strtol((char*)a, &resto_a, 10);
-    size_t pos_usuario_b = (size_t)strtol((char*)b, &resto_b, 10);
-
-    if (pos_usuario_a > pos_usuario_b){
-        return -1;
-    } else if (pos_usuario_a < pos_usuario_b){
-        return 1;
-    }
-    resto_a++; //para quitar la coma
-    resto_b++;
-    size_t id_post_a = (size_t)strtol(resto_a, NULL, 10);
-    size_t id_post_b = (size_t)strtol(resto_b, NULL, 10);
-
-    if (id_post_a > id_post_b){
-        return -1;
-    } else if (id_post_a < id_post_b){
-        return 1;
-    } else {
-        return 0; //no deberia pasar hasta aca
-    }
-}
 
 struct post{
     char* publicador;
@@ -137,6 +113,31 @@ void destruir_usuario_wrapper(void* usuario) {
     destruir_usuario(usuario);
 }
 
+int cmp_feed(const void*a, const void*b){
+    // "1,28" USUARIO POS 1, ID POST 28
+    char* resto_a;
+    char* resto_b;
+    size_t pos_usuario_a = (size_t)strtol((char*)a, &resto_a, 10);
+    size_t pos_usuario_b = (size_t)strtol((char*)b, &resto_b, 10);
+
+    if (pos_usuario_a > pos_usuario_b){
+        return -1;
+    } else if (pos_usuario_a < pos_usuario_b){
+        return 1;
+    }
+    resto_a++; //para quitar la coma
+    resto_b++;
+    size_t id_post_a = (size_t)strtol(resto_a, NULL, 10);
+    size_t id_post_b = (size_t)strtol(resto_b, NULL, 10);
+
+    if (id_post_a > id_post_b){
+        return -1;
+    } else if (id_post_a < id_post_b){
+        return 1;
+    } else {
+        return 0; //no deberia pasar hasta aca
+    }
+}
 
 //-----------------------------------------------------------------//
 
@@ -147,10 +148,8 @@ struct algogram{
     hash_t *usuarios_por_id; // para guardar el feed
     hash_t *posts;
     int cant_posts;
-    int cant_usuarios;
     int id_usuario_logueado;
     char* nombre_usuario_logueado;
-    bool logueado;
 };
 
 algogram_t *crear_algo(FILE *usuarios){
@@ -159,7 +158,6 @@ algogram_t *crear_algo(FILE *usuarios){
 
     algo->cant_posts = 0;
     algo->nombre_usuario_logueado = NULL;
-    algo->logueado = false;
 
     algo->posts = hash_crear(destruir_post_wrapper);
     if (!algo->posts){
@@ -217,12 +215,11 @@ algogram_t *crear_algo(FILE *usuarios){
     }
     free(line);
 
-    algo->cant_usuarios = n;
     return algo;
 }
 
 void login(algogram_t *algo, char *usuario) {
-    if (algo->logueado){
+    if (algo->nombre_usuario_logueado){
         printf("Error: Ya habia un usuario loggeado\n");
         return;
     } else if (!hash_pertenece(algo->usuarios_por_nombre, usuario)){
@@ -230,11 +227,7 @@ void login(algogram_t *algo, char *usuario) {
         return;
     }
 
-    if (algo->nombre_usuario_logueado)
-        free(algo->nombre_usuario_logueado);
-
     printf("Hola %s\n", usuario);
-    algo->logueado = true;
     algo->nombre_usuario_logueado = strdup(usuario);
 
     int id_usuario = *(int*)hash_obtener(algo->usuarios_por_nombre, usuario);
@@ -242,18 +235,18 @@ void login(algogram_t *algo, char *usuario) {
 }
 
 void logout(algogram_t *algo) {
-    if (!algo->logueado){
-        printf("Error: no habia usuario loggeado\n");
+    if (!algo->nombre_usuario_logueado){
+        printf(NO_USUARIO_LOGGEADO);
         return;
     }
-
+    free(algo->nombre_usuario_logueado);
+    algo->nombre_usuario_logueado = NULL;
     printf("Adios\n");
-    algo->logueado = false;
 }
 
 void publicar(algogram_t *algo, char *texto) {
-    if (!algo->logueado){
-        printf("Error: no habia usuario loggeado\n");
+    if (!algo->nombre_usuario_logueado){
+        printf(NO_USUARIO_LOGGEADO);
         return;
     }
 
@@ -295,7 +288,7 @@ void publicar(algogram_t *algo, char *texto) {
 }
 
 void likear_post(algogram_t *algo, size_t id) {
-    if (!algo->logueado || algo->cant_posts <= id){
+    if (!algo->nombre_usuario_logueado || algo->cant_posts <= id){
         printf("Error: Usuario no loggeado o Post inexistente\n");
         return;
     }
@@ -327,16 +320,13 @@ void mostrar_likes(algogram_t *algo, size_t id) {
     post_t *post = hash_obtener(algo->posts, id_);
     free(id_);
 
-    if (algo->cant_posts <= id || post == NULL){
+    if (post == NULL || abb_cantidad(post->dieron_likes) == 0){
         printf("Error: Post inexistente o sin likes\n");
         return;
     }
 
     size_t n = abb_cantidad(post->dieron_likes);
-    if (n == 0){
-        printf("Error: Post inexistente o sin likes\n");
-        return;
-    }
+
     printf("El post tiene %zu likes:\n", n);
 
     abb_in_order(post->dieron_likes, printear_nombres, NULL);
@@ -354,7 +344,7 @@ void destruir_algo(algogram_t *algo) {
 
 
 void ver_siguiente_feed(algogram_t *algo){
-    if (!algo->logueado){
+    if (!algo->nombre_usuario_logueado){
         printf("Usuario no loggeado o no hay mas posts para ver\n");
         return;
     }

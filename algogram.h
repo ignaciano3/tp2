@@ -14,7 +14,7 @@ usuario_t *crear_usuario(int id);
 void usuario_agregar_post(usuario_t *usuario, int id_post, int id_posteador);
 void destruir_usuario(usuario_t *usuario);
 void destruir_usuario_wrapper(void *usuario);
-
+int cmp_feed(const void*a, const void*b);
 
 // POST
 post_t *crear_post(char* publicador, char* texto);
